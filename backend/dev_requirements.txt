@@ -1,0 +1,7 @@
+-r requirements.txt
+
+
+pylint_django==2.5.3
+black==23.3.0
+flake8==6.0.0 
+flake8-isort==6.0.0 

@@ -1,0 +1,112 @@
+version: "3"
+
+services:
+  backend:
+    build: ./backend
+    command: bash -c "python manage.py runserver 0.0.0.0:8000"
+    image: backend:0.0.1
+    container_name: backend
+    restart: always
+    volumes:
+      - ./backend:/backend
+      - ./backend/media:/backend/media
+    ports:
+      - "8000:8000"
+    networks:
+      - bridge_net
+    depends_on:
+      - db
+      - redis
+      - jaeger
+    env_file:
+      - ./.env
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: frontend:0.0.1
+    container_name: frontend
+    restart: always
+    networks:
+      - bridge_net
+    ports:
+      - 3000:3000
+    volumes:
+      - ./frontend:/frontend
+    depends_on:
+      - backend
+
+  db:
+    image: library/postgres:15.0
+    container_name: db
+    ports:
+      - 5432:5432
+    restart: unless-stopped
+    networks:
+      - bridge_net
+    volumes:
+      - db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=db
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: root
+    ports:
+      - 5050:80
+    networks:
+      - bridge_net
+
+  redis:
+    container_name: redis
+    image: library/redis:5.0-alpine
+    ports:
+      - 6379:6379
+    restart: unless-stopped
+    networks:
+      - bridge_net
+    volumes:
+      - redis:/data
+
+  jaeger:
+    container_name: jaeger
+    image: jaegertracing/all-in-one
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"
+      - "14268:14268"
+      - "9411:9411"
+    restart: unless-stopped
+    networks:
+      - bridge_net
+
+  mailpit:
+    container_name: mailpit
+    image: axllent/mailpit
+    ports:
+      - 1025:1025 # smtp server
+      - 8025:8025 # web ui. Visit http://localhost:8025/ to check emails
+    restart: unless-stopped
+    networks:
+      - bridge_net
+
+volumes:
+  db:
+    driver: local
+  redis:
+    driver: local
+  media:
+
+networks:
+  bridge_net:
+    driver: bridge

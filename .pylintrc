@@ -1,0 +1,6 @@
+[MASTER]
+disable=
+    C0114, # missing-module-docstring
+    C0115, # missing-class-docstring
+    E0307, # abstract-class-instantiated
+    C0116, # missing-function-docstring

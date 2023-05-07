@@ -9,8 +9,10 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
-
+import os
 from pathlib import Path
+from decouple import config
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,10 +25,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-ecp8l_=toi6isj6m8#%q#7hf^f@gjm@r(#dh=j)duq7==qb*z$"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+SECRET_KEY = config("SECRET_KEY", "Foo")
 
-ALLOWED_HOSTS = []
+DEBUG = config("DEBUG", True)
 
+ALLOWED_HOSTS = config("ALLOWED_HOSTS").split(" ")
 
 # Application definition
 
@@ -37,9 +40,15 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "graphene_django",
+    "users",
+    "commerce",
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # new
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -75,8 +84,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": config("SQL_ENGINE", "django.db.backends.sqlite3"),
+        "NAME": config("SQL_DATABASE", BASE_DIR / "db.sqlite3"),
+        "USER": config("SQL_USER", "user"),
+        "PASSWORD": config("SQL_PASSWORD", "password"),
+        "HOST": config("SQL_HOST", "localhost"),
+        "PORT": config("SQL_PORT", "5432"),
     }
 }
 
@@ -99,6 +112,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+AUTH_USER_MODEL = "users.User"
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
@@ -112,12 +126,49 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/4.2/howto/static-files/
-
-STATIC_URL = "static/"
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+S3_BUCKET_URL = config("S3_BUCKET_URL")
+STATIC_ROOT = "staticfiles"
+
+AWS_ACCESS_KEY_ID = config("AWS_S3_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = config("AWS_S3_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME")
+AWS_HOST_REGION = config("AWS_HOST_REGION")
+AWS_S3_CUSTOM_DOMAIN = "%s.s3.amazonaws.com" % AWS_STORAGE_BUCKET_NAME
+AWS_DEFAULT_ACL = None
+
+AWS_LOCATION = "static"
+
+MEDIA_URL = "/media/"
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/4.2/howto/static-files/
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "config/static"),
+]
+STATIC_URL = "https://%s/%s/" % (AWS_S3_CUSTOM_DOMAIN, AWS_LOCATION)
+STATICFILES_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+
+
+AWS_S3_OBJECT_PARAMETERS = {
+    "CacheControl": "max-age=86400",
+}
+
+DEFAULT_FILE_STORAGE = "config.storage_backends.MediaStorage"
+
+
+GRAPHENE = {
+    "SCHEMA": "config.schema.schema",
+    "MIDDLEWARE": [
+        "config.middlewares.CustomAuthMiddleware",
+        "config.middlewares.CustomPaginationMiddleware",
+    ],
+    "PAGE_SIZE": 20,
+}
+
+CORS_ALLOW_ALL_ORIGINS = True
